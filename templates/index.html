@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>AI Flight Delay Dashboard</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+text-align:center;
+}
+
+h1{
+margin-top:20px;
+}
+
+#map{
+height:500px;
+width:90%;
+margin:auto;
+margin-top:20px;
+border-radius:10px;
+}
+
+table{
+width:90%;
+margin:auto;
+margin-top:20px;
+border-collapse:collapse;
+}
+
+th{
+background:#334155;
+padding:10px;
+}
+
+td{
+padding:8px;
+border-bottom:1px solid #475569;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>✈️ AI Flight Delay Dashboard</h1>
+
+<div id="map"></div>
+
+<table>
+
+<thead>
+
+<tr>
+<th>Flight</th>
+<th>Velocity</th>
+<th>Altitude</th>
+<th>Delay Risk</th>
+<th>Status</th>
+</tr>
+
+</thead>
+
+<tbody id="flightTable"></tbody>
+
+</table>
+
+<script>
+
+const map = L.map('map').setView([30,0],2)
+
+L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+maxZoom:18
+}).addTo(map)
+
+let markers = []
+
+async function loadFlights(){
+
+const response = await fetch("/flights")
+const data = await response.json()
+
+const table = document.getElementById("flightTable")
+table.innerHTML=""
+
+markers.forEach(m => map.removeLayer(m))
+markers=[]
+
+data.flights.forEach(flight=>{
+
+const prob = flight.delay_probability * 100
+
+let color="green"
+
+if(prob > 70) color="red"
+else if(prob > 40) color="orange"
+
+const marker = L.circleMarker(
+[flight.latitude, flight.longitude],
+{
+radius:6,
+color:color
+}
+).addTo(map)
+
+marker.bindPopup(
+`<b>${flight.flight}</b><br>
+Velocity: ${flight.velocity}<br>
+Altitude: ${flight.altitude}<br>
+Delay Risk: ${prob.toFixed(1)}%`
+)
+
+markers.push(marker)
+
+const row=document.createElement("tr")
+
+row.innerHTML=`
+
+<td>${flight.flight}</td>
+<td>${flight.velocity.toFixed(0)}</td>
+<td>${flight.altitude.toFixed(0)}</td>
+<td>${prob.toFixed(1)}%</td>
+<td>${flight.is_delayed ? "Delayed" : "On Time"}</td>
+
+`
+
+table.appendChild(row)
+
+})
+
+}
+
+loadFlights()
+
+setInterval(loadFlights,10000)
+
+</script>
+
+</body>
+</html>
